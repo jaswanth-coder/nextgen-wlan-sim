@@ -94,6 +94,9 @@ class MLOLinkManager:
         self._emlmr_policy: LinkSelectionPolicy = RoundRobinPolicy()
         # EMLMR: n radios (from node config)
         self._n_radios: int = getattr(node, "emlmr_n_radios", 2)
+        # TID-to-link mapping
+        from nxwlansim.mac.tid_link_map import TIDLinkMap, default_map
+        self.tid_link_map: TIDLinkMap = default_map()
 
     # ------------------------------------------------------------------
     # STR — all links fully independent
@@ -174,3 +177,20 @@ class MLOLinkManager:
 
     def idle_links(self) -> list[LinkContext]:
         return [c for c in self.links.values() if c.state == LinkState.IDLE]
+
+    def select_link_for_tid(self, tid: int) -> str | None:
+        """
+        Return the preferred link for a given TID based on TID-to-link mapping.
+        Falls back to first idle link.
+        """
+        available = [
+            lid for lid, ctx in self.links.items()
+            if ctx.state == LinkState.IDLE
+        ]
+        if not available:
+            available = list(self.links.keys())
+        preferred = self.tid_link_map.get_preferred_link(tid, available)
+        return preferred or (available[0] if available else None)
+
+    def set_tid_link_map(self, tid_map) -> None:
+        self.tid_link_map = tid_map

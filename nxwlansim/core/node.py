@@ -27,6 +27,8 @@ class Node:
         self._engine: "SimulationEngine | None" = None
         self.mlo_manager = None      # set by builder: MLOLinkManager
         self.edca_scheduler = None   # set by builder: EDCAScheduler
+        self.txop_engine = None      # set by builder: TXOPEngine
+        self.rx_processor = None     # set by builder: RXProcessor
         self.phy = None              # set by builder: PhyAbstraction instance
 
     def attach(self, engine: "SimulationEngine") -> None:

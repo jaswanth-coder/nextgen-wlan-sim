@@ -73,10 +73,12 @@ def _attach_mac(engine, registry: NodeRegistry) -> None:
     from nxwlansim.mac.mlo import MLOLinkManager
     from nxwlansim.mac.edca import EDCAScheduler
     from nxwlansim.mac.txop import TXOPEngine
+    from nxwlansim.mac.rx import RXProcessor
     for node in registry:
         node.mlo_manager = MLOLinkManager(node, engine)
         node.edca_scheduler = EDCAScheduler(node, engine)
         node.txop_engine = TXOPEngine(node, engine)
+        node.rx_processor = RXProcessor(node, engine)
 
     # Register node positions with PHY after all nodes are built
     for node in registry:

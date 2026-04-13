@@ -208,8 +208,13 @@ class TXOPEngine:
         # Request PHY TX
         tx_result = self.node.phy.request_tx(frames[0], ctx)
 
-        # Set NAV on other nodes (simplified: only self for now)
+        # Propagate NAV to all other nodes on the same link
         nav_duration = tx_result.duration_ns + SIFS_NS
+        self._propagate_nav(engine, link_id, nav_duration)
+
+        # Record TX metrics
+        if engine._registry and hasattr(engine, "_results"):
+            engine._results.record_tx(self.node.node_id, tx_result.bytes_sent)
 
         logger.debug(
             "[TX] %s link=%s n_frames=%d mcs=%d bw=%d dur=%.1f µs",
@@ -226,7 +231,24 @@ class TXOPEngine:
             link_id=link_id,
             tx_result=tx_result,
             dst=dst,
+            channel=ch,
         )
+
+    def _propagate_nav(
+        self,
+        engine: "SimulationEngine",
+        link_id: str,
+        nav_duration_ns: int,
+    ) -> None:
+        """Set NAV on all nodes that can hear this transmission."""
+        if not engine._registry:
+            return
+        for other in engine._registry:
+            if other.node_id == self.node.node_id:
+                continue
+            ctx = other.mlo_manager.links.get(link_id)
+            if ctx:
+                ctx.set_nav(nav_duration_ns, engine.now_ns)
 
     def _on_phy_complete(
         self,
@@ -234,21 +256,45 @@ class TXOPEngine:
         link_id: str,
         tx_result,
         dst: str,
+        channel,
         **_,
     ) -> None:
         ctx = self.node.mlo_manager.get_link(link_id)
         ctx.state = LinkState.WAIT_BA
 
-        # Simulate BA reception after SIFS
-        engine.schedule_after(
-            delay_ns=SIFS_NS,
-            callback=self._on_ba_received,
-            priority=PHY_COMPLETE,
-            link_id=link_id,
-            success=True,   # simplified: assume BA success for Phase 1
-        )
+        # Trigger real RX processing on destination node
+        import math
+        try:
+            dst_node = engine._registry.get(dst)
+            dist_m = math.dist(self.node.position, dst_node.position) or 1.0
+            ampdu = self._inflight.get(link_id)
+            if ampdu and hasattr(dst_node, "rx_processor"):
+                dst_node.rx_processor.schedule_receive(
+                    ampdu=ampdu,
+                    channel=channel,
+                    sender_id=self.node.node_id,
+                    dist_m=dist_m,
+                )
+                # Real BA comes back via RXProcessor._send_ba → _on_ba_received
+            else:
+                # Fallback: self-schedule BA success if no RX processor
+                engine.schedule_after(
+                    delay_ns=SIFS_NS * 2,
+                    callback=self._on_ba_received,
+                    priority=PHY_COMPLETE,
+                    link_id=link_id,
+                    success=True,
+                )
+        except (KeyError, AttributeError):
+            engine.schedule_after(
+                delay_ns=SIFS_NS * 2,
+                callback=self._on_ba_received,
+                priority=PHY_COMPLETE,
+                link_id=link_id,
+                success=True,
+            )
 
-        # Also schedule BA timeout as safety net
+        # BA timeout as safety net
         from nxwlansim.mac.ampdu import BA_TIMEOUT_NS
         engine.schedule_after(
             delay_ns=BA_TIMEOUT_NS,
@@ -271,14 +317,26 @@ class TXOPEngine:
         ctx.state = LinkState.IDLE
         ampdu = self._inflight.pop(link_id, None)
 
+        # Record metrics
+        if engine._results and ampdu:
+            engine._results.record_tx(self.node.node_id, ampdu.total_size_bytes)
+
+        # Update EDCA CW
         sched = self.node.edca_scheduler
         for ac_name in ("VO", "VI", "BE", "BK"):
             q = sched.queues[ac_name]
-            if success:
-                q.txop_success()
-            else:
-                q.collision()
-            break
+            if not q.empty or success:
+                if success:
+                    q.txop_success()
+                else:
+                    q.collision()
+                break
+
+        if not success and ampdu:
+            # Re-queue failed subframes for retransmission
+            for subframe in reversed(ampdu.subframes):
+                subframe.retry = True
+                sched.queues[subframe.ac]._queue.insert(0, subframe)
 
         if self.node.mlo_mode == "emlsr":
             self.node.mlo_manager.emlsr_release()
@@ -301,11 +359,23 @@ class TXOPEngine:
             return   # BA already received
 
         ctx.state = LinkState.IDLE
-        self._inflight.pop(link_id, None)
+        ampdu = self._inflight.pop(link_id, None)
 
-        # Mark collision on all ACs
+        # Record timeout metric
+        if engine._results:
+            engine._results.record_ba_timeout(self.node.node_id)
+
+        # Re-queue subframes
+        if ampdu:
+            sched = self.node.edca_scheduler
+            for subframe in reversed(ampdu.subframes):
+                subframe.retry = True
+                sched.queues[subframe.ac]._queue.insert(0, subframe)
+
+        # Mark collision on all non-empty ACs
         for q in self.node.edca_scheduler.queues.values():
-            q.collision()
+            if not q.empty:
+                q.collision()
 
         logger.warning(
             "[BA-TIMEOUT] %s link=%s — retransmitting", self.node.node_id, link_id

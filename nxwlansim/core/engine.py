@@ -21,6 +21,9 @@ MAC_DECISION   = 1
 TRAFFIC_GEN    = 2
 OBSERVE        = 3
 
+# Re-export for convenience
+__all__ = ["SimulationEngine", "Event", "PHY_COMPLETE", "MAC_DECISION", "TRAFFIC_GEN", "OBSERVE"]
+
 
 @dataclass(order=True)
 class Event:
@@ -47,6 +50,7 @@ class SimulationEngine:
         self._queue: list[Event] = []
         self._seq = itertools.count()
         self._registry = None   # set by engine.run() after node build
+        self._results = None    # set by engine.run(): SimResults instance
         self._observers: list[Callable] = []
         self._running = False
 
@@ -104,6 +108,12 @@ class SimulationEngine:
         sim_logger = SimLogger(self.config)
         self._observers.append(sim_logger.on_event)
 
+        from nxwlansim.core.results import SimResults
+        from nxwlansim.observe.metrics import MetricsCollector
+        self._results = SimResults(engine=self, registry=self._registry, config=self.config)
+        self._metrics = MetricsCollector(self.config, self._registry)
+        self._metrics.start(self)
+
         logger.info(
             "Simulation start: duration=%.3f ms, nodes=%d",
             duration_ns / 1e6,
@@ -123,13 +133,13 @@ class SimulationEngine:
             event_count += 1
 
         self._running = False
+        self._metrics.close()
         logger.info(
             "Simulation end: clock=%.3f ms, events_processed=%d",
             self.clock_ns / 1e6,
             event_count,
         )
-        from nxwlansim.core.results import SimResults
-        return SimResults(engine=self, registry=self._registry, config=self.config)
+        return self._results
 
     # ------------------------------------------------------------------
     # Helpers
