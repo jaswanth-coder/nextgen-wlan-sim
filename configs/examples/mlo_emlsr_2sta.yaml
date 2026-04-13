@@ -1,0 +1,48 @@
+simulation:
+  duration_us: 500000
+  seed: 7
+
+network:
+  mode: bss
+
+phy:
+  backend: tgbe
+  channel_model: D
+
+nodes:
+  - id: ap0
+    type: ap
+    links: [5g, 6g]
+    mlo_mode: emlsr
+    position: [0.0, 0.0]
+  - id: sta0
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: emlsr
+    emlsr_transition_delay_us: 64
+    position: [8.0, 0.0]
+  - id: sta1
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: emlsr
+    emlsr_transition_delay_us: 128
+    position: [0.0, 8.0]
+
+traffic:
+  - src: sta0
+    dst: ap0
+    type: udp_cbr
+    rate_mbps: 300
+    ac: BE
+  - src: sta1
+    dst: ap0
+    type: video
+    rate_mbps: 50
+    ac: VI
+
+obs:
+  log: true
+  csv: true
+  pcap: true
+  viz: false
+  output_dir: results/mlo_emlsr_2sta

@@ -1,0 +1,56 @@
+simulation:
+  duration_us: 500000    # 500 ms
+  seed: 42
+
+network:
+  mode: bss
+
+phy:
+  backend: tgbe
+  channel_model: D
+
+nodes:
+  - id: ap0
+    type: ap
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [0.0, 0.0]
+  - id: sta0
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [5.0, 0.0]
+  - id: sta1
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [0.0, 5.0]
+  - id: sta2
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [-5.0, 0.0]
+
+traffic:
+  - src: sta0
+    dst: ap0
+    type: udp_cbr
+    rate_mbps: 200
+    ac: BE
+  - src: sta1
+    dst: ap0
+    type: udp_cbr
+    rate_mbps: 100
+    ac: VI
+  - src: sta2
+    dst: ap0
+    type: voip
+    rate_mbps: 0.064
+    ac: VO
+
+obs:
+  log: true
+  csv: true
+  pcap: false
+  viz: false
+  output_dir: results/mlo_str_basic

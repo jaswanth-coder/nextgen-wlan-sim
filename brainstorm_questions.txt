@@ -1,0 +1,108 @@
+WiFi 7/8 Network Simulator — Brainstorming Questions
+=====================================================
+Answer each question with: Q<number>: <your answer>
+
+--- SCOPE & PURPOSE ---
+
+Q1: What is the primary use case?
+  A) Academic research / paper writing
+  B) Protocol development & debugging (implement a new MLO feature, test it)
+  C) Performance benchmarking (throughput, latency, fairness across topologies)
+  D) Industry/product evaluation (compare chipset behaviors)
+  E) Other (describe)
+  
+answer : yes for B and C and at the end for for doing A.
+
+Q2: MATLAB integration — how tight does it need to be?
+  A) Loose: Python simulator runs standalone, MATLAB can import results (CSV/JSON) for post-processing
+  B) Medium: Python calls MATLAB engine API to invoke WLAN Toolbox PHY functions at runtime
+  C) Tight: MATLAB co-simulation — MATLAB drives the sim loop, Python handles MAC/Network layers as a MEX/engine subprocess.
+
+answer : All three except for "C" if its possible .A and B is must.
+
+Q3: Which technologies to support in Phase 1 (MLO focus)?
+  A) MLO STR (Simultaneous Transmit & Receive) only
+  B) MLO STR + EMLSR (Enhanced Multi-Link Single Radio)
+  C) MLO STR + EMLSR + EMLMR (Enhanced Multi-Link Multi-Radio)
+  D) All of the above from day 1
+  
+Answer : D
+
+Q4: MAC layer — how detailed?
+  A) Abstract/event-driven: model TXOP, EDCA queues, BA sessions at state-machine level (fast, less bit-accurate)
+  B) Semi-accurate: model frame formats, aggregation (A-MPDU), ACK/BA exchange with timing (moderate complexity)
+  C) Cycle-accurate: model every backoff slot, NAV, SIFS/DIFS/AIFS timing precisely (slow, most accurate)
+
+Answer: C
+
+Q5: Network layer scope?
+  A) Only the BSS (AP + STAs) — no routing above MAC
+  B) BSS + basic IP (UDP/TCP traffic sources, simple routing between APs)
+  C) Full multi-AP coordination with DS (Distribution System) and roaming
+
+Answer : All three modes should be avilable.
+
+
+Q6: Simulation engine style?
+  A) Discrete-event simulation (DES) — standard ns-3/OMNeT++ style, time-stamped event queue
+  B) Time-slotted (slot-based) — fixed slot size, simpler but less flexible
+  C) Hybrid: DES for MAC events, slotted for PHY abstraction boundary
+Answer : C use the hybrid style.
+
+Q7: Performance & scale targets?
+  A) Small: 1 AP + up to 10 STAs, fast iteration
+  B) Medium: up to 5 APs + 50 STAs
+  C) Large: 20+ APs + 200+ STAs (requires careful optimization)
+
+Answer:Medium level frist then slowly we develope for large ones.
+
+Q8: PHY abstraction source for standalone (non-MATLAB) mode?
+  A) Simple lookup tables (SNR → MCS → throughput)
+  B) Statistical channel models (TGbe channel model D/E, log-normal shadowing)
+  C) No standalone PHY — always require MATLAB WLAN Toolbox
+
+
+Answer : B and C to be inlcuded . the channel models referce should be taken from what the ns3 simulators channel have they considered.
+
+
+
+Q9: Output / observability?
+  A) Text logs + CSV metrics only
+  B) Real-time visualization (topology, link states, queue depths) via web UI or matplotlib
+  C) PCAP export (Wireshark-compatible) for frame-level debugging
+  D) All of the above
+
+Answer : D: all of the above when invoked using specific command or when the radio box is ticked / selected based on the desnig.
+
+
+Q10: Implementation language preference?
+  A) Python only (pure Python DES core)
+  B) Python + C extension for performance-critical inner loops
+  C) Python + optional C++ core (pybind11), with Python API on top
+  D) No preference — whatever fits best
+
+Answer: A and D also . i would like to to be pure python as further i would like to integrate this along with opengym or some AI libraries in python.
+
+Q11: Existing simulator familiarity? (helps decide how much to mirror known APIs)
+  A) ns-3
+  B) OMNeT++ / INET
+  C) OPNET / Riverbed Modeler
+  D) MATLAB WLAN Toolbox sim examples
+  E) None / building from scratch mentally
+
+Answe : A,D
+
+Q12: Deliverable format?
+  A) Library / importable package (import netsim; run from scripts)
+  B) CLI tool (netsim run config.yaml)
+  C) Both
+  D) Jupyter notebook-friendly API
+
+Answer : C
+--- FUTURE PHASES (just flag yes/no, no detail needed) ---
+
+Q13: NPCA (Non-Primary Channel Access) — Phase 2?  yes
+Q14: Multi-AP Coordination (C-OFDMA, coordinated spatial reuse) — Phase 3?  yes
+Q15: WiFi 8 (EHT+, 320 MHz, 16-stream features) — later phase?  yes
+Q16: Mesh / 802.11s support ever?  yes
+Q17: Security layer (PMF, SAE, 4-way handshake) ever?  no

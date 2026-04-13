@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nextgen-wlan-sim"
+version = "0.1.0"
+description = "IEEE 802.11be/WiFi 7-8 next-generation WLAN network simulator (MLO, NPCA, Multi-AP)"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "jaswanth-coder" }]
+keywords = ["wifi7", "wifi8", "802.11be", "MLO", "network-simulator", "wlan"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Telecommunications Industry",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: System :: Networking",
+]
+
+dependencies = [
+    "pyyaml>=6.0",
+    "numpy>=1.24",
+    "matplotlib>=3.7",
+    "scapy>=2.5",
+    "flask>=3.0",
+    "gymnasium>=0.29",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "ruff>=0.1",
+]
+matlab = [
+    # matlabengine version must match your installed MATLAB version.
+    # Install manually: pip install matlabengine==<version>
+]
+
+[project.scripts]
+nxwlansim = "nxwlansim.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/jaswanth-coder/nextgen-wlan-sim"
+Repository = "https://github.com/jaswanth-coder/nextgen-wlan-sim"
+Issues = "https://github.com/jaswanth-coder/nextgen-wlan-sim/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["nxwlansim*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "matlab: tests requiring MATLAB engine (skip with -m 'not matlab')",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
