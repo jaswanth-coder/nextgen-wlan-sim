@@ -208,6 +208,17 @@ class TXOPEngine:
         # Request PHY TX
         tx_result = self.node.phy.request_tx(frames[0], ctx)
 
+        # Register with interference tracker
+        from nxwlansim.phy.interference import get_tracker, reset_tracker
+        get_tracker().register_tx(
+            node_id=self.node.node_id,
+            link_id=link_id,
+            tx_power_dbm=20.0,
+            start_ns=engine.now_ns,
+            end_ns=engine.now_ns + tx_result.duration_ns,
+            dst_id=dst,
+        )
+
         # Propagate NAV to all other nodes on the same link
         nav_duration = tx_result.duration_ns + SIFS_NS
         self._propagate_nav(engine, link_id, nav_duration)
@@ -261,6 +272,16 @@ class TXOPEngine:
     ) -> None:
         ctx = self.node.mlo_manager.get_link(link_id)
         ctx.state = LinkState.WAIT_BA
+
+        # Write PCAP if hook installed
+        ampdu_pcap = self._inflight.get(link_id)
+        if ampdu_pcap and getattr(self.node, "pcap_hook", None):
+            self.node.pcap_hook.on_tx_complete(
+                ampdu=ampdu_pcap,
+                tx_result=tx_result,
+                channel=channel,
+                timestamp_ns=engine.now_ns,
+            )
 
         # Trigger real RX processing on destination node
         import math

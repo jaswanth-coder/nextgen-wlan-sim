@@ -79,11 +79,23 @@ def _attach_mac(engine, registry: NodeRegistry) -> None:
         node.edca_scheduler = EDCAScheduler(node, engine)
         node.txop_engine = TXOPEngine(node, engine)
         node.rx_processor = RXProcessor(node, engine)
+        node.pcap_hook = None   # set below if pcap enabled
 
     # Register node positions with PHY after all nodes are built
     for node in registry:
         if hasattr(node.phy, "register_node"):
             node.phy.register_node(node.node_id, node.position)
+
+    # Attach PCAP hooks if enabled
+    if engine.config.obs.pcap:
+        import os
+        from nxwlansim.observe.pcap import PCAPWriter
+        from nxwlansim.observe.pcap_hook import PCAPHook
+        pcap_dir = os.path.join(engine.config.obs.output_dir, "pcap")
+        writer = PCAPWriter(pcap_dir)
+        engine._pcap_writer = writer
+        for node in registry:
+            node.pcap_hook = PCAPHook(node.node_id, writer)
 
 
 def _schedule_traffic(engine, registry: NodeRegistry, cfg) -> None:

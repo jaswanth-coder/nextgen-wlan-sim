@@ -48,6 +48,7 @@ matlab = [
 [project.scripts]
 nxwlansim = "nxwlansim.cli.main:main"
 
+
 [project.urls]
 Homepage = "https://github.com/jaswanth-coder/nextgen-wlan-sim"
 Repository = "https://github.com/jaswanth-coder/nextgen-wlan-sim"

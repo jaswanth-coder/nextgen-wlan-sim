@@ -60,15 +60,37 @@ class TGbeChannel(PhyAbstraction):
     # ------------------------------------------------------------------
 
     def get_channel_state(self, src_id: str, dst_id: str, link_id: str) -> ChannelState:
+        from nxwlansim.phy.interference import get_tracker
         snr_db = self._compute_snr(src_id, dst_id, link_id)
         bw = _link_bandwidth_mhz(link_id)
-        mcs = self._snr_to_mcs(snr_db)
+
+        # Compute interference from concurrent transmitters
+        tracker = get_tracker()
+        import time as _time
+        now_ns = int(_time.time_ns()) if not self._positions else 0
+        interference_dbm = tracker.get_interference_dbm(
+            link_id=link_id,
+            now_ns=now_ns,
+            exclude_node_id=src_id,
+            dst_id=dst_id,
+            positions=self._positions,
+        )
+        # If significant interference, reduce effective SNR (SINR)
+        if interference_dbm > -150:
+            noise_floor = -90.0   # approximate noise floor
+            sinr_reduction = max(0, interference_dbm - noise_floor)
+            sinr_db = snr_db - sinr_reduction
+        else:
+            sinr_db = snr_db
+
+        mcs = self._snr_to_mcs(sinr_db)
         return ChannelState(
             link_id=link_id,
-            snr_db=snr_db,
-            interference_db=0.0,   # inter-BSS interference: Phase 2
+            snr_db=sinr_db,
+            interference_db=interference_dbm,
             bandwidth_mhz=bw,
             mcs_index=mcs,
+            path_loss_db=0.0,
         )
 
     def request_tx(self, frame: "Frame", link: "LinkContext") -> TxResult:

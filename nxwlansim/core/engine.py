@@ -110,6 +110,8 @@ class SimulationEngine:
 
         from nxwlansim.core.results import SimResults
         from nxwlansim.observe.metrics import MetricsCollector
+        from nxwlansim.phy.interference import reset_tracker
+        reset_tracker()   # clear state from any previous sim run
         self._results = SimResults(engine=self, registry=self._registry, config=self.config)
         self._metrics = MetricsCollector(self.config, self._registry)
         self._metrics.start(self)
@@ -134,6 +136,8 @@ class SimulationEngine:
 
         self._running = False
         self._metrics.close()
+        if hasattr(self, "_pcap_writer"):
+            self._pcap_writer.close_all()
         logger.info(
             "Simulation end: clock=%.3f ms, events_processed=%d",
             self.clock_ns / 1e6,
