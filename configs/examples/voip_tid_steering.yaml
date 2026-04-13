@@ -1,0 +1,72 @@
+# VoIP TID Steering — TID-to-Link Mapping Demo
+# Routes VO TIDs exclusively to 6 GHz (low latency, uncongested).
+# VI/BE on 5 GHz. BK on both links.
+# Demonstrates how TID-to-link mapping improves QoS for real-time traffic.
+
+simulation:
+  duration_us: 500000
+  seed: 21
+
+network:
+  mode: bss
+
+phy:
+  backend: tgbe
+  channel_model: D
+
+nodes:
+  - id: ap0
+    type: ap
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [0.0, 0.0]
+
+  # VoIP + Video mixed station
+  - id: sta0
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [4.0, 0.0]
+
+  # Background download + VoIP
+  - id: sta1
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [0.0, 4.0]
+
+traffic:
+  # VoIP — will be steered to 6 GHz via TID map (TID 6/7 → AC VO)
+  - src: sta0
+    dst: ap0
+    type: voip
+    rate_mbps: 0.064
+    ac: VO
+
+  # Video — 5 GHz
+  - src: sta0
+    dst: ap0
+    type: video
+    rate_mbps: 60
+    ac: VI
+
+  # Background
+  - src: sta1
+    dst: ap0
+    type: poisson
+    rate_mbps: 200
+    ac: BK
+
+  # VoIP second station
+  - src: sta1
+    dst: ap0
+    type: voip
+    rate_mbps: 0.064
+    ac: VO
+
+obs:
+  log: true
+  csv: true
+  pcap: false
+  viz: true
+  output_dir: results/voip_tid_steering

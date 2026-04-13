@@ -1,0 +1,102 @@
+# Multi-AP IP Mode — Roaming-Ready Topology
+# Two APs serving distinct areas. STAs associated to nearest AP.
+# Network mode: ip — STAs can communicate via DS backhaul.
+# Sets up infrastructure for Phase 3 roaming events.
+
+simulation:
+  duration_us: 1000000
+  seed: 88
+
+network:
+  mode: ip
+
+phy:
+  backend: tgbe
+  channel_model: E
+
+nodes:
+  - id: ap0
+    type: ap
+    links: [2g, 5g, 6g]
+    mlo_mode: str
+    position: [-15.0, 0.0]
+
+  - id: ap1
+    type: ap
+    links: [2g, 5g, 6g]
+    mlo_mode: str
+    position: [15.0, 0.0]
+
+  # STAs near ap0
+  - id: sta0
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: emlsr
+    emlsr_transition_delay_us: 64
+    position: [-12.0, 2.0]
+
+  - id: sta1
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [-10.0, -2.0]
+
+  # STAs near ap1
+  - id: sta2
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: emlmr
+    emlmr_n_radios: 2
+    position: [12.0, 2.0]
+
+  - id: sta3
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [10.0, -2.0]
+
+  # STA near border — candidate for roaming (Phase 3)
+  - id: sta_border
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: emlsr
+    emlsr_transition_delay_us: 128
+    position: [0.0, 0.0]
+
+traffic:
+  - src: sta0
+    dst: ap0
+    type: udp_cbr
+    rate_mbps: 300
+    ac: BE
+
+  - src: sta1
+    dst: ap0
+    type: video
+    rate_mbps: 80
+    ac: VI
+
+  - src: sta2
+    dst: ap1
+    type: udp_cbr
+    rate_mbps: 300
+    ac: BE
+
+  - src: sta3
+    dst: ap1
+    type: poisson
+    rate_mbps: 150
+    ac: BE
+
+  - src: sta_border
+    dst: ap0
+    type: voip
+    rate_mbps: 0.064
+    ac: VO
+
+obs:
+  log: true
+  csv: true
+  pcap: true
+  viz: true
+  output_dir: results/multiap_roaming

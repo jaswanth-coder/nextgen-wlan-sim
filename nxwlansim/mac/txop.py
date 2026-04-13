@@ -149,6 +149,7 @@ class TXOPEngine:
             return   # EMLSR will call back after transition delay
         # EMLMR handled by MLOLinkManager policy
         ctx.state = LinkState.TXOP_GRANTED
+        self._emit_link_state(engine, link_id, "TXOP_GRANTED")
 
         txop_limit_ns = _TXOP_LIMIT_NS.get(queue.ac, 0) or _DEFAULT_TXOP_NS
         ctx.txop_end_ns = engine.now_ns + txop_limit_ns
@@ -203,6 +204,7 @@ class TXOPEngine:
             queue._queue.insert(0, f)
 
         ctx.state = LinkState.TRANSMITTING
+        self._emit_link_state(engine, link_id, "TRANSMITTING")
         self._inflight[link_id] = ampdu
 
         # Request PHY TX
@@ -272,6 +274,7 @@ class TXOPEngine:
     ) -> None:
         ctx = self.node.mlo_manager.get_link(link_id)
         ctx.state = LinkState.WAIT_BA
+        self._emit_link_state(engine, link_id, "WAIT_BA")
 
         # Write PCAP if hook installed
         ampdu_pcap = self._inflight.get(link_id)
@@ -336,6 +339,7 @@ class TXOPEngine:
             return   # timeout already fired
 
         ctx.state = LinkState.IDLE
+        self._emit_link_state(engine, link_id, "IDLE")
         ampdu = self._inflight.pop(link_id, None)
 
         # Record metrics
@@ -414,3 +418,18 @@ class TXOPEngine:
             priority=MAC_DECISION,
             link_id=link_id,
         )
+
+    def _emit_link_state(
+        self,
+        engine: "SimulationEngine",
+        link_id: str,
+        state: str,
+    ) -> None:
+        """Push link state event to SimViz if active."""
+        if hasattr(engine, "_viz") and engine._viz:
+            engine._viz.on_link_state(
+                time_us=engine.now_ns / 1_000.0,
+                node_id=self.node.node_id,
+                link_id=link_id,
+                state=state,
+            )

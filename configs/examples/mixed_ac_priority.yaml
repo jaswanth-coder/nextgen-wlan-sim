@@ -1,0 +1,82 @@
+# Mixed AC Priority Test
+# Validates EDCA prioritization: VO > VI > BE > BK under contention.
+# All 4 ACs compete for the same links.
+# Expected: VO has lowest latency, BE/BK degrade under load.
+
+simulation:
+  duration_us: 500000
+  seed: 77
+
+network:
+  mode: bss
+
+phy:
+  backend: tgbe
+  channel_model: D
+
+nodes:
+  - id: ap0
+    type: ap
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [0.0, 0.0]
+
+  # VoIP station — VO traffic
+  - id: sta_vo
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [3.0, 0.0]
+
+  # Video station — VI traffic
+  - id: sta_vi
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [0.0, 3.0]
+
+  # Best-effort bulk — BE traffic
+  - id: sta_be
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [-3.0, 0.0]
+
+  # Background download — BK traffic
+  - id: sta_bk
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [0.0, -3.0]
+
+traffic:
+  - src: sta_vo
+    dst: ap0
+    type: voip
+    rate_mbps: 0.064
+    ac: VO
+
+  - src: sta_vi
+    dst: ap0
+    type: video
+    rate_mbps: 50
+    ac: VI
+
+  - src: sta_be
+    dst: ap0
+    type: udp_cbr
+    rate_mbps: 300
+    ac: BE
+
+  - src: sta_bk
+    dst: ap0
+    type: poisson
+    rate_mbps: 300
+    ac: BK
+
+obs:
+  log: true
+  csv: true
+  pcap: false
+  viz: true
+  output_dir: results/mixed_ac_priority

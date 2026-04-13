@@ -1,0 +1,93 @@
+# Heavy Load — STR Stress Test
+# 5 STAs each sending maximum traffic on 3 links simultaneously.
+# Tests EDCA fairness, BA efficiency, and TXOP scheduling under saturation.
+# STR mode: all 3 links active in parallel for each node.
+
+simulation:
+  duration_us: 1000000   # 1 second
+  seed: 42
+
+network:
+  mode: ip
+
+phy:
+  backend: tgbe
+  channel_model: E        # Large open space — higher mobility variance
+
+nodes:
+  - id: ap0
+    type: ap
+    links: [2g, 5g, 6g]
+    mlo_mode: str
+    position: [0.0, 0.0]
+
+  - id: sta0
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [4.0, 0.0]
+
+  - id: sta1
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [0.0, 4.0]
+
+  - id: sta2
+    type: sta
+    links: [2g, 5g]
+    mlo_mode: str
+    position: [-4.0, 0.0]
+
+  - id: sta3
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [0.0, -4.0]
+
+  - id: sta4
+    type: sta
+    links: [2g, 6g]
+    mlo_mode: str
+    position: [3.0, 3.0]
+
+traffic:
+  # Saturated best-effort uplink
+  - src: sta0
+    dst: ap0
+    type: udp_cbr
+    rate_mbps: 500
+    ac: BE
+
+  - src: sta1
+    dst: ap0
+    type: udp_cbr
+    rate_mbps: 500
+    ac: BE
+
+  # Video + VoIP mix
+  - src: sta2
+    dst: ap0
+    type: video
+    rate_mbps: 80
+    ac: VI
+
+  - src: sta3
+    dst: ap0
+    type: voip
+    rate_mbps: 0.064
+    ac: VO
+
+  # Poisson background
+  - src: sta4
+    dst: ap0
+    type: poisson
+    rate_mbps: 200
+    ac: BK
+
+obs:
+  log: true
+  csv: true
+  pcap: false
+  viz: true
+  output_dir: results/heavy_load_str

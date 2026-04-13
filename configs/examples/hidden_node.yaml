@@ -1,0 +1,59 @@
+# Hidden Node Scenario
+# STA0 and STA1 are on opposite sides of AP0 — they cannot hear each other.
+# Both transmit to AP0 on the same link → classic hidden node problem.
+# Demonstrates NAV-based collision avoidance and BA retransmission behavior.
+#
+# Topology:
+#   STA0 (-20m, 0) ----  AP0 (0,0)  ---- STA1 (+20m, 0)
+#   STA0 cannot hear STA1 (40m apart, beyond range)
+
+simulation:
+  duration_us: 500000    # 500 ms
+  seed: 13
+
+network:
+  mode: bss
+
+phy:
+  backend: tgbe
+  channel_model: D
+
+nodes:
+  - id: ap0
+    type: ap
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [0.0, 0.0]
+
+  - id: sta0
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [-20.0, 0.0]
+
+  - id: sta1
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [20.0, 0.0]
+
+traffic:
+  # Both STAs saturate the link simultaneously → hidden node collisions
+  - src: sta0
+    dst: ap0
+    type: udp_cbr
+    rate_mbps: 400
+    ac: BE
+
+  - src: sta1
+    dst: ap0
+    type: udp_cbr
+    rate_mbps: 400
+    ac: BE
+
+obs:
+  log: true
+  csv: true
+  pcap: true
+  viz: true
+  output_dir: results/hidden_node

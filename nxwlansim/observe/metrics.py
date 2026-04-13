@@ -27,6 +27,7 @@ class MetricsCollector:
     """
     Samples throughput, latency, retransmissions at fixed intervals.
     Writes one CSV row per node per interval.
+    Pushes samples to SimViz if visualization is enabled.
     """
 
     def __init__(
@@ -34,6 +35,7 @@ class MetricsCollector:
         config: "SimConfig",
         registry: "NodeRegistry",
         interval_ns: int = DEFAULT_INTERVAL_NS,
+        viz=None,
     ):
         self._config = config
         self._registry = registry
@@ -41,6 +43,7 @@ class MetricsCollector:
         self._csv_path = os.path.join(config.obs.output_dir, "metrics.csv")
         self._csv_file = None
         self._csv_writer = None
+        self._viz = viz   # SimViz instance or None
 
         # Per-node byte counters, reset each interval
         self._bytes_in_interval: dict[str, int] = {
@@ -106,6 +109,15 @@ class MetricsCollector:
                     mcs, snr,
                 ])
                 self._csv_file.flush()
+
+            # Push to viz
+            if self._viz and tput_mbps > 0:
+                self._viz.on_sample(
+                    node_id=nid,
+                    time_us=now_us,
+                    throughput_mbps=tput_mbps,
+                    link_id=",".join(node.links),
+                )
 
             # Reset counters
             self._bytes_in_interval[nid] = 0
