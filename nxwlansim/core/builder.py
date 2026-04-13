@@ -72,11 +72,22 @@ def _associate_nodes(registry: NodeRegistry) -> None:
 def _attach_mac(engine, registry: NodeRegistry) -> None:
     from nxwlansim.mac.mlo import MLOLinkManager
     from nxwlansim.mac.edca import EDCAScheduler
+    from nxwlansim.mac.txop import TXOPEngine
     for node in registry:
         node.mlo_manager = MLOLinkManager(node, engine)
         node.edca_scheduler = EDCAScheduler(node, engine)
+        node.txop_engine = TXOPEngine(node, engine)
+
+    # Register node positions with PHY after all nodes are built
+    for node in registry:
+        if hasattr(node.phy, "register_node"):
+            node.phy.register_node(node.node_id, node.position)
 
 
 def _schedule_traffic(engine, registry: NodeRegistry, cfg) -> None:
     from nxwlansim.traffic.generators import schedule_traffic_sources
     schedule_traffic_sources(engine, registry, cfg.traffic)
+    # Boot TXOP engines for all nodes — starts backoff loops on each link
+    for node in registry:
+        for link_id in node.links:
+            node.txop_engine.start_link(link_id)
