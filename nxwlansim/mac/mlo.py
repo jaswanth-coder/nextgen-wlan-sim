@@ -69,8 +69,18 @@ class RoundRobinPolicy(LinkSelectionPolicy):
 
 class LoadBalancePolicy(LinkSelectionPolicy):
     def select(self, contexts: list[LinkContext], n_radios: int) -> list[LinkContext]:
-        # Select links with smallest queue depth (stub: use IDLE links)
+        """Select idle links ordered by ascending total queue depth (least-loaded first)."""
         idle = [c for c in contexts if c.state == LinkState.IDLE]
+        if not idle:
+            return []
+
+        def _queue_depth(ctx: LinkContext) -> int:
+            sched = getattr(ctx.node, "edca_scheduler", None)
+            if sched is None:
+                return 0
+            return sum(len(q._queue) for q in sched.queues.values())
+
+        idle.sort(key=_queue_depth)
         return idle[:n_radios]
 
 

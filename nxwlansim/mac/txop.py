@@ -225,9 +225,8 @@ class TXOPEngine:
         nav_duration = tx_result.duration_ns + SIFS_NS
         self._propagate_nav(engine, link_id, nav_duration)
 
-        # Record TX metrics
-        if engine._registry and hasattr(engine, "_results"):
-            engine._results.record_tx(self.node.node_id, tx_result.bytes_sent)
+        # NOTE: TX bytes are recorded after BA receipt (_on_ba_received), not here.
+        # Recording here would double-count since _on_ba_received also records.
 
         logger.debug(
             "[TX] %s link=%s n_frames=%d mcs=%d bw=%d dur=%.1f µs",
@@ -342,9 +341,12 @@ class TXOPEngine:
         self._emit_link_state(engine, link_id, "IDLE")
         ampdu = self._inflight.pop(link_id, None)
 
-        # Record metrics
-        if engine._results and ampdu:
-            engine._results.record_tx(self.node.node_id, ampdu.total_size_bytes)
+        # Record metrics — only on successful delivery (after BA confirms receipt)
+        if ampdu and success:
+            if engine._results:
+                engine._results.record_tx(self.node.node_id, ampdu.total_size_bytes)
+            if hasattr(engine, "_metrics"):
+                engine._metrics.record_tx_event(self.node.node_id, ampdu.total_size_bytes)
 
         # Update EDCA CW
         sched = self.node.edca_scheduler
