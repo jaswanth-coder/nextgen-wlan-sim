@@ -130,6 +130,25 @@ To activate: set `phy.backend: matlab` in YAML config.
 - `scripts/verify_matlab.py` — confirms WLAN Toolbox is installed and licensed
 - `scripts/generate_fixture_tables.py` — regenerates CI fixture HDF5
 
+## PENDING: MATLAB activation (do this next session)
+
+MATLAB R2025a is licensed but not yet installed. Once installed on this Ubuntu machine:
+
+1. Follow `docs/setup/matlab_ubuntu_install.md` for R2025a Ubuntu install steps.
+2. Run `python3 scripts/verify_matlab.py` — confirms WLAN Toolbox is licensed and working.
+3. Run a sim with `phy.backend: matlab` to warm the HDF5 cache (~60 s first run, instant after):
+   ```bash
+   python3 -c "
+   from nxwlansim.core.config import SimConfig
+   from nxwlansim.core.engine import SimulationEngine
+   cfg = SimConfig.from_yaml('configs/examples/npca_basic.yaml')
+   # Edit the yaml or override: cfg.phy.backend = 'matlab'
+   r = SimulationEngine(cfg).run()
+   print(r.summary())
+   "
+   ```
+4. The generated tables are cached at `~/.nxwlansim/phy_tables/` — subsequent runs are fast.
+
 ## Test suite
 ```bash
 pytest tests/ -q
