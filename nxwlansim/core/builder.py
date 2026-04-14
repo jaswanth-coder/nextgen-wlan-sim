@@ -41,16 +41,8 @@ def build_simulation(engine: "SimulationEngine") -> NodeRegistry:
 
 def _build_phy(cfg):
     if cfg.phy.backend == "matlab":
-        try:
-            from nxwlansim.phy.matlab_phy import MatlabWlanPhy
-            return MatlabWlanPhy(cfg.phy)
-        except ImportError:
-            import warnings
-            warnings.warn(
-                "matlab.engine not available — falling back to TGbeChannel.",
-                RuntimeWarning,
-                stacklevel=3,
-            )
+        from nxwlansim.phy.matlab.adaptive_phy import AdaptivePhy
+        return AdaptivePhy(cfg.phy)
     from nxwlansim.phy.tgbe_channel import TGbeChannel
     return TGbeChannel(cfg.phy)
 
