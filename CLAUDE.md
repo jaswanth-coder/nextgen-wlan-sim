@@ -96,6 +96,40 @@ Or quick-build: `SimConfig.quick_build(mlo_mode="str", n_links=2, n_stas=3, dura
 - **LoadBalancePolicy** (`mac/mlo.py`): was a stub that just returned idle links. Now sorts by real EDCA queue depth (least-loaded link first). Used by EMLMR mode.
 - **MetricsCollector not fed** (`mac/txop.py`): `engine._metrics.record_tx_event()` was never called — viz throughput plots were empty. Fixed by wiring it into the post-BA success path.
 
+## Phase 2 additions (MATLAB PHY + Full NPCA)
+
+### MATLAB PHY pipeline (`nxwlansim/phy/matlab/`)
+- `cache.py` — `TableCache` + `CacheKey` (SHA256-keyed HDF5 storage)
+- `table_phy.py` — `TablePhy` pure-Python interpolating backend (CI-safe)
+- `generator.py` — `MatlabTableGenerator` (calls WLAN Toolbox at startup)
+- `live_phy.py` — `MatlabLivePhy` (reserved for future custom-channel live path)
+- `adaptive_phy.py` — `AdaptivePhy` orchestrator (what builder instantiates for `backend: matlab`)
+
+To activate: set `phy.backend: matlab` in YAML config.
+- With MATLAB installed: generates + caches tables on first run (~60 s), instant on subsequent runs.
+- Without MATLAB (CI): loads `tests/fixtures/tgbe_d_fixture.h5` automatically.
+
+### Full NPCA (`nxwlansim/mac/npca.py`)
+- `NPCAEngine` — evaluates per-subchannel NAV, returns `NPCADecision`
+- `NPCADecision` — `use_npca`, `punctured_mask`, `effective_bw_mhz`
+- `LinkContext.sub_nav` — per-subchannel NAV dict (added to `mlo.py`)
+- `AMPDUFrame.punctured_mask` + `effective_bw_mhz` (added to `frame.py`)
+- NPCA hook in `txop._attempt_txop()` — evaluates + coordinates before each TX
+- `NPCAEngine` attached to every node by `builder._attach_mac()`
+
+### NPCA metrics
+- `MetricsCollector.record_npca_event()` — called from txop on every TXOP attempt
+- CSV columns added: `npca_opportunities`, `npca_used`, `npca_gain_mbps`
+
+### New example configs
+- `configs/examples/npca_basic.yaml` — 1 AP + 2 STAs, heavy BE load
+- `configs/examples/npca_coordinated.yaml` — 1 AP + 4 STAs, coordinated NPCA
+
+### Setup docs
+- `docs/setup/matlab_ubuntu_install.md` — R2025a Ubuntu install guide
+- `scripts/verify_matlab.py` — confirms WLAN Toolbox is installed and licensed
+- `scripts/generate_fixture_tables.py` — regenerates CI fixture HDF5
+
 ## Test suite
 ```bash
 pytest tests/ -q
