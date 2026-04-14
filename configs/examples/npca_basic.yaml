@@ -1,0 +1,46 @@
+simulation:
+  duration_us: 500000    # 500 ms
+  seed: 42
+
+network:
+  mode: bss
+
+phy:
+  backend: tgbe          # swap to matlab once MATLAB installed
+  channel_model: D
+
+nodes:
+  - id: ap0
+    type: ap
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [0.0, 0.0]
+  - id: sta0
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [5.0, 0.0]
+  - id: sta1
+    type: sta
+    links: [5g, 6g]
+    mlo_mode: str
+    position: [0.0, 5.0]
+
+traffic:
+  - src: sta0
+    dst: ap0
+    type: udp_cbr
+    rate_mbps: 300        # heavy load to saturate primary channel
+    ac: BE
+  - src: sta1
+    dst: ap0
+    type: udp_cbr
+    rate_mbps: 150
+    ac: VI
+
+obs:
+  log: true
+  csv: true
+  pcap: false
+  viz: true
+  output_dir: results/npca_basic
