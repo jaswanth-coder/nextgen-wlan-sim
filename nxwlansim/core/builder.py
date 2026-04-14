@@ -71,6 +71,8 @@ def _attach_mac(engine, registry: NodeRegistry) -> None:
         node.edca_scheduler = EDCAScheduler(node, engine)
         node.txop_engine = TXOPEngine(node, engine)
         node.rx_processor = RXProcessor(node, engine)
+        from nxwlansim.mac.npca import NPCAEngine
+        node.npca_engine = NPCAEngine(node)
         node.pcap_hook = None   # set below if pcap enabled
 
     # Register node positions with PHY after all nodes are built

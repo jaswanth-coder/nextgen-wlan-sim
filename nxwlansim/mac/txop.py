@@ -154,11 +154,25 @@ class TXOPEngine:
         txop_limit_ns = _TXOP_LIMIT_NS.get(queue.ac, 0) or _DEFAULT_TXOP_NS
         ctx.txop_end_ns = engine.now_ns + txop_limit_ns
 
+        # NPCA: check if we should puncture sub-channels
+        _punctured = 0
+        if hasattr(self.node, "npca_engine") and self.node.npca_engine is not None:
+            npca = self.node.npca_engine.evaluate(link_id, engine.now_ns)
+            if npca.use_npca:
+                self.node.npca_engine.coordinate(link_id, txop_limit_ns, engine)
+            _punctured = npca.punctured_mask
+
+        if hasattr(engine, "_metrics") and engine._metrics is not None:
+            engine._metrics.record_npca_event(
+                self.node.node_id,
+                used=_punctured != 0,
+            )
+
         logger.debug(
             "[TXOP] %s granted on %s ac=%s txop=%.2f ms",
             self.node.node_id, link_id, queue.ac, txop_limit_ns / 1e6,
         )
-        self._transmit_ampdu(engine, link_id, queue)
+        self._transmit_ampdu(engine, link_id, queue, punctured_mask=_punctured)
 
     # ------------------------------------------------------------------
     # Transmission
@@ -169,6 +183,7 @@ class TXOPEngine:
         engine: "SimulationEngine",
         link_id: str,
         queue: "ACQueue",
+        punctured_mask: int = 0,
     ) -> None:
         ctx = self.node.mlo_manager.get_link(link_id)
         if ctx.state != LinkState.TXOP_GRANTED:
@@ -196,6 +211,7 @@ class TXOPEngine:
             txop_remaining_ns=txop_remaining,
             mcs=ch.mcs_index,
             bandwidth_mhz=ch.bandwidth_mhz,
+            punctured_mask=punctured_mask,
         )
 
         # Put back frames that didn't fit

@@ -39,6 +39,8 @@ class AMPDUFrame:
     link_id: str = "6g"
     total_size_bytes: int = 0
     duration_ns: int = 0                  # computed TXOP duration
+    punctured_mask: int = 0       # bitmask of punctured 80 MHz sub-channels
+    effective_bw_mhz: float = 0.0 # TX bandwidth after puncturing
 
     def add(self, mpdu: MPDUFrame) -> None:
         self.subframes.append(mpdu)

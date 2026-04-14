@@ -75,10 +75,17 @@ class AmpduAggregator:
         txop_remaining_ns: int,
         mcs: int,
         bandwidth_mhz: int,
+        punctured_mask: int = 0,
     ) -> AMPDUFrame:
         """Aggregate frames into an A-MPDU fitting within TXOP."""
-        ampdu = AMPDUFrame(link_id=link_id)
-        byte_budget = _txop_bytes(txop_remaining_ns, mcs, bandwidth_mhz)
+        # Compute effective BW after puncturing
+        n_sub = 4
+        n_free = bin(~punctured_mask & 0xF).count("1")
+        eff_bw = int(bandwidth_mhz * n_free / n_sub) if n_free else bandwidth_mhz
+        ampdu = AMPDUFrame(link_id=link_id,
+                           punctured_mask=punctured_mask,
+                           effective_bw_mhz=float(eff_bw))
+        byte_budget = _txop_bytes(txop_remaining_ns, mcs, eff_bw or bandwidth_mhz)
         for frame in frames[:MAX_AMPDU_SUBFRAMES]:
             if ampdu.total_size_bytes + frame.size_bytes > byte_budget:
                 break

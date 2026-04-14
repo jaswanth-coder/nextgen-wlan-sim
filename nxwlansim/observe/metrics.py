@@ -52,6 +52,9 @@ class MetricsCollector:
         self._frames_in_interval: dict[str, int] = {
             n.node_id: 0 for n in registry
         }
+        self._npca_opportunities: dict[str, int] = {n.node_id: 0 for n in registry}
+        self._npca_used: dict[str, int]          = {n.node_id: 0 for n in registry}
+        self._npca_bytes_gained: dict[str, int]  = {n.node_id: 0 for n in registry}
         self._last_sample_ns: int = 0
 
         if config.obs.csv:
@@ -62,6 +65,7 @@ class MetricsCollector:
                 "time_us", "node_id", "node_type", "link_id",
                 "throughput_mbps", "frames", "bytes",
                 "mcs", "snr_db",
+                "npca_opportunities", "npca_used", "npca_gain_mbps",
             ])
 
     def start(self, engine: "SimulationEngine") -> None:
@@ -78,6 +82,14 @@ class MetricsCollector:
         if node_id in self._bytes_in_interval:
             self._bytes_in_interval[node_id] += bytes_sent
             self._frames_in_interval[node_id] += 1
+
+    def record_npca_event(self, node_id: str, used: bool, bytes_gained: int = 0) -> None:
+        """Called by TXOPEngine when NPCA is evaluated."""
+        if node_id in self._npca_opportunities:
+            self._npca_opportunities[node_id] += 1
+            if used:
+                self._npca_used[node_id] += 1
+                self._npca_bytes_gained[node_id] += bytes_gained
 
     def _sample(self, engine: "SimulationEngine", engine_ref, **_) -> None:
         now_us = engine.now_ns / 1_000.0
@@ -102,11 +114,15 @@ class MetricsCollector:
                     pass
 
             if self._csv_writer and (b > 0 or f > 0):
+                npca_opp  = self._npca_opportunities.get(nid, 0)
+                npca_used = self._npca_used.get(nid, 0)
+                npca_gain = self._npca_bytes_gained.get(nid, 0) * 8 / interval_s / 1e6
                 self._csv_writer.writerow([
                     f"{now_us:.1f}", nid, node.node_type,
                     ",".join(node.links),
                     f"{tput_mbps:.3f}", f, b,
                     mcs, snr,
+                    npca_opp, npca_used, f"{npca_gain:.3f}",
                 ])
                 self._csv_file.flush()
 
