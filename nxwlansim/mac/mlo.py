@@ -37,6 +37,8 @@ class LinkContext:
         self.txop_end_ns: int = 0         # TXOP end timestamp
         self.current_frame = None         # frame currently in flight
         self.ba_session = None            # BlockAckSession — set by AmpduAggregator
+        # Per-subchannel NAV (NPCA): subchannel_id → expiry_ns
+        self.sub_nav: dict[int, int] = {}
 
     def is_nav_busy(self, now_ns: int) -> bool:
         return now_ns < self.nav_expiry_ns
@@ -46,6 +48,16 @@ class LinkContext:
 
     def __repr__(self) -> str:
         return f"<LinkContext {self.link_id} state={self.state.name}>"
+
+    def free_subchannels(self, now_ns: int, n_subchannels: int = 4) -> list[int]:
+        """Return subchannel indices with clear sub-NAV."""
+        return [i for i in range(n_subchannels)
+                if now_ns >= self.sub_nav.get(i, 0)]
+
+    def set_sub_nav(self, subchannel_id: int, duration_ns: int, now_ns: int) -> None:
+        """Set sub-channel NAV, keeping the max expiry."""
+        expiry = now_ns + duration_ns
+        self.sub_nav[subchannel_id] = max(self.sub_nav.get(subchannel_id, 0), expiry)
 
 
 class LinkSelectionPolicy:
