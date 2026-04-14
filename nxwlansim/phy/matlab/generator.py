@@ -6,13 +6,12 @@ from __future__ import annotations
 import logging
 import numpy as np
 from nxwlansim.phy.matlab.cache import TableSet
+from nxwlansim.phy.matlab.table_phy import _MCS_RATE_20MHZ
 
 logger = logging.getLogger(__name__)
 
 SNR_MIN, SNR_MAX, SNR_STEP = -5.0, 40.0, 0.5
 _SNR_POINTS = np.arange(SNR_MIN, SNR_MAX + SNR_STEP, SNR_STEP)   # 91 points
-_MCS_RATE_20MHZ = [8.6, 17.2, 25.8, 34.4, 51.6, 68.8, 77.4,
-                    86.0, 103.2, 114.7, 129.0, 143.4, 154.9, 172.1]
 
 
 class MatlabTableGenerator:

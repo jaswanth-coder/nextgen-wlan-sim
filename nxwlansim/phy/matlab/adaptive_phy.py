@@ -19,7 +19,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Default fixture path (committed to repo for CI)
+# Fixture path works in dev checkout only (tests/ dir not shipped with installed package).
+# For installed deployments, supply a cache_dir with pre-generated tables.
 _FIXTURE_PATH = os.path.join(
     os.path.dirname(__file__), "..", "..", "..", "tests", "fixtures", "tgbe_d_fixture.h5"
 )
@@ -79,11 +80,18 @@ class AdaptivePhy(PhyAbstraction):
             )
             self._cache.save(key, tables)
             return tables
-        except Exception as exc:
-            logger.warning("[AdaptivePhy] MATLAB unavailable: %s", exc)
+        except ImportError as exc:
+            logger.warning("[AdaptivePhy] matlab.engine not installed: %s", exc)
             return None
+        except Exception as exc:
+            # Only swallow MATLAB communication errors, not programmer errors
+            exc_type = type(exc).__name__
+            if any(s in exc_type for s in ("Matlab", "Engine", "matlab")):
+                logger.warning("[AdaptivePhy] MATLAB error during generation: %s", exc)
+                return None
+            raise
 
-    def register_node(self, node_id: str, position: tuple) -> None:
+    def register_node(self, node_id: str, position: tuple[float, float]) -> None:
         if hasattr(self._backend, "register_node"):
             self._backend.register_node(node_id, position)
 

@@ -17,7 +17,11 @@ logger = logging.getLogger(__name__)
 
 
 class MatlabLivePhy(PhyAbstraction):
-    """Thin wrapper — calls TablePhy if tables loaded, otherwise safe defaults."""
+    """Thin wrapper — calls TablePhy if tables loaded, otherwise safe defaults.
+
+    NOTE: This class is reserved for the future custom-channel live-MATLAB path (Phase 2+).
+    Currently not wired into AdaptivePhy — AdaptivePhy uses MatlabTableGenerator for all generation.
+    """
 
     def __init__(self, table_phy: TablePhy | None = None):
         self._phy = table_phy
