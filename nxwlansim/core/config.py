@@ -18,8 +18,13 @@ class SimulationConfig:
 @dataclass
 class PhyConfig:
     backend: Literal["tgbe", "matlab"] = "tgbe"
-    channel_model: Literal["D", "E"] = "D"
+    channel_model: Literal["D", "E", "custom"] = "D"
     matlab_mode: Literal["loose", "medium"] = "loose"
+    custom_channel: str = ""          # path to .mat file (empty = not used)
+    cache_dir: str = ""               # empty = ~/.nxwlansim/phy_tables
+    snr_step_db: float = 0.5
+    per_threshold: float = 0.1
+    force_regenerate: bool = False
 
 
 @dataclass
