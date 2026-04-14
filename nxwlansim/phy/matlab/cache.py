@@ -66,6 +66,9 @@ class TableCache:
 
     def load_from_file(self, path: str) -> TableSet:
         """Load a specific HDF5 file directly (fixture tables, custom channels)."""
+        if not _H5PY:
+            logger.warning("[Cache] h5py not available — cannot load fixture from %s", path)
+            return {}
         return _read_h5(path)
 
     def save(self, key: CacheKey, tables: TableSet) -> None:

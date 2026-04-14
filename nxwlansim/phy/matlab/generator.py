@@ -28,7 +28,7 @@ class MatlabTableGenerator:
         custom_mat_path: str | None = None,
     ) -> TableSet:
         bw_list = bw_list or [20, 40, 80, 160, 320]
-        ant_configs = ant_configs or [(1, 1), (2, 2)]
+        ant_configs = ant_configs or [(1, 1), (2, 2), (4, 4)]
         eng = self._eng or self._start_engine()
         tables: TableSet = {}
         mcs_list = list(range(mcs_range[0], mcs_range[1] + 1))
