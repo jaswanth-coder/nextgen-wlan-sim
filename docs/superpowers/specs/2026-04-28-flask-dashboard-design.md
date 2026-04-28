@@ -128,13 +128,16 @@ Collapsible right sidebar with three sections:
 - Pause / Resume / Stop buttons
 - Sim clock display (current sim time in ms)
 - Speed multiplier selector: 1×, 2×, 5×, 10×, Max
+  - Implemented as a wall-clock throttle: the engine sleeps `event_delta_ns / multiplier` of real time after each event. "Max" = no sleep (as fast as possible, default DES behaviour).
 
 ### Node Editor (active when a node is selected)
 - Drag node on topology → `PATCH /api/nodes/{id}/position`
 - MCS override: dropdown (Auto / MCS 0–13)
 - NPCA enabled: toggle → `PATCH /api/nodes/{id}/npca`
 - Add node: type (AP/STA), position, links → `POST /api/nodes`
+  - Engine must pause briefly; builder wires PHY + MAC for the new node; registry.register() is called; engine resumes. Node will not have backlog traffic until a traffic source is injected separately.
 - Remove selected node → `DELETE /api/nodes/{id}`
+  - Node's pending events are drained before removal; outstanding BA sessions are cancelled.
 
 ### Traffic Injector
 - Source / Destination node dropdowns
