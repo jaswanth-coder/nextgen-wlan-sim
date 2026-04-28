@@ -33,6 +33,13 @@ nxwlansim/
     pcap.py / pcap_hook.py — optional PCAP capture
   network/
     bss.py, ip_layer.py, multi_ap.py
+  dashboard/                          — Phase 3 (in progress)
+    server.py   — Flask app + SocketIO setup + background thread runner
+    bridge.py   — SimBridge: hooks into engine, queues + emits SocketIO events
+    api.py      — REST control endpoints (pause/resume/stop, nodes, traffic)
+    events.py   — SocketIO event name constants + payload schemas
+    static/     — dashboard.js, dashboard.css
+    templates/  — dashboard.html (single-page shell, Chart.js via CDN)
 ```
 
 ## Key wiring facts (read before touching engine/mac/observe)
@@ -40,6 +47,7 @@ nxwlansim/
 - `engine._metrics`  → MetricsCollector (CSV + viz feed); must call `record_tx_event()` on every successful TX
 - `engine._viz`      → SimViz; receives samples via `_metrics` (do not call directly from MAC)
 - `engine._registry` → NodeRegistry, set after `build_simulation()` inside `engine.run()`
+- `engine.on_tx / on_state / on_metrics / on_log` → hook slots for SimBridge (None by default)
 - Event priorities: PHY_COMPLETE=0, MAC_DECISION=1, TRAFFIC_GEN=2, OBSERVE=3
 
 ## Config quick-reference
@@ -148,6 +156,59 @@ MATLAB R2025a is licensed but not yet installed. Once installed on this Ubuntu m
    "
    ```
 4. The generated tables are cached at `~/.nxwlansim/phy_tables/` — subsequent runs are fast.
+
+## Phase 3: Flask Web Dashboard (design approved — implementation next)
+
+### What it adds
+Real-time browser dashboard: live monitoring + interactive mid-run control + post-run replay.
+
+### Launch command
+```bash
+nxwlansim dashboard --config configs/examples/npca_basic.yaml --port 5050
+# open http://localhost:5050
+```
+
+### Architecture
+- **SimBridge** (`dashboard/bridge.py`) hooks into engine's `on_tx / on_state / on_metrics / on_log` slots
+- **Flask + Flask-SocketIO** (`dashboard/server.py`) — eventlet async, WebSocket for live events
+- **REST API** (`dashboard/api.py`) — control commands (pause/resume/stop, add/remove/move nodes, inject traffic)
+- **SessionStore** (`observe/session_store.py`) — auto-saves every run to `results/sessions/<timestamp>/`
+- **dashboard.html + dashboard.js** — 4-panel grid (Topology, Throughput, Node Detail, Log Stream)
+
+### Panel system
+- 2×2 configurable grid; each panel independently swappable and full-screen expandable
+- Default: Topology (top-left), Throughput (top-right), Node Detail (bottom-left), Log Stream (bottom-right)
+
+### Control sidebar (collapsible)
+- **Sim controls**: pause / resume / stop / speed multiplier (1×–Max)
+- **Node editor**: drag position, MCS override, NPCA toggle, add/remove node
+- **Traffic injector**: source, destination, type (UDP CBR/VoIP/Burst), rate, AC
+
+### Replay mode
+- Session history sidebar: lists `results/sessions/` runs with timestamp + config summary
+- File picker: load any `results/` directory manually
+- Timeline scrubber (play/pause/speed) at bottom; control sidebar disabled in replay mode
+
+### Key SocketIO events (server → browser)
+`sim:tick`, `tx:event`, `link:state`, `metrics:sample`, `log:line`, `sim:status`, `node:added`, `node:removed`, `session:saved`
+
+### Session files saved per run
+```
+results/sessions/<timestamp>_<config>/
+  config.yaml      ← copy of run config
+  metrics.csv      ← MetricsCollector output
+  events.jsonl     ← one JSON line per event (used for replay)
+  meta.json        ← {run_id, start_ts, end_ts, n_nodes, total_bytes}
+```
+
+### New dependencies
+```toml
+"flask-socketio>=5.3",
+"eventlet>=0.35",
+```
+
+### Design spec
+`docs/superpowers/specs/2026-04-28-flask-dashboard-design.md`
 
 ## Test suite
 ```bash
