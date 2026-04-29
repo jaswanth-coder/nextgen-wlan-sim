@@ -57,6 +57,7 @@ class TXOPEngine:
         self.aggregator = AmpduAggregator(node, engine)
         # Track in-flight A-MPDUs awaiting BA: link_id → AMPDUFrame
         self._inflight: dict[str, AMPDUFrame] = {}
+        self._last_ch = None  # most recent ChannelState for on_tx hook
 
     # ------------------------------------------------------------------
     # Entry point — called once per link at sim start by builder
@@ -204,6 +205,7 @@ class TXOPEngine:
         # Get channel state for MCS
         dst = frames[0].dst
         ch = self.node.phy.get_channel_state(self.node.node_id, dst, link_id)
+        self._last_ch = ch
 
         txop_remaining = max(0, ctx.txop_end_ns - engine.now_ns)
         ampdu = self.aggregator.build_ampdu(
@@ -363,6 +365,14 @@ class TXOPEngine:
                 engine._results.record_tx(self.node.node_id, ampdu.total_size_bytes)
             if hasattr(engine, "_metrics"):
                 engine._metrics.record_tx_event(self.node.node_id, ampdu.total_size_bytes)
+            if engine.on_tx is not None:
+                engine.on_tx(
+                    node_id=self.node.node_id,
+                    link_id=link_id,
+                    bytes_tx=ampdu.total_size_bytes,
+                    mcs=self._last_ch.mcs_index if self._last_ch else 0,
+                    time_ns=engine.now_ns,
+                )
 
         # Update EDCA CW
         sched = self.node.edca_scheduler
@@ -450,4 +460,11 @@ class TXOPEngine:
                 node_id=self.node.node_id,
                 link_id=link_id,
                 state=state,
+            )
+        if engine.on_state is not None:
+            engine.on_state(
+                node_id=self.node.node_id,
+                link_id=link_id,
+                state=state,
+                time_ns=engine.now_ns,
             )
