@@ -33,7 +33,7 @@ nxwlansim/
     pcap.py / pcap_hook.py — optional PCAP capture
   network/
     bss.py, ip_layer.py, multi_ap.py
-  dashboard/                          — Phase 3 (in progress)
+  dashboard/                          — Phase 3 (complete)
     server.py   — Flask app + SocketIO setup + background thread runner
     bridge.py   — SimBridge: hooks into engine, queues + emits SocketIO events
     api.py      — REST control endpoints (pause/resume/stop, nodes, traffic)
@@ -87,6 +87,8 @@ Or quick-build: `SimConfig.quick_build(mlo_mode="str", n_links=2, n_stas=3, dura
     results/mlo_demo/topology.png
     results/mlo_demo/link_states.png
     results/mlo_demo/metrics.csv
+- `nxwlansim dashboard --config configs/examples/npca_basic.yaml --port 5050` — live dashboard
+- `nxwlansim dashboard --replay results/sessions/<dir>/` — replay mode
 
 ## MLO modes supported
 - `str`   — Simultaneous Transmit & Receive (both links active independently)
@@ -157,7 +159,7 @@ MATLAB R2025a is licensed but not yet installed. Once installed on this Ubuntu m
    ```
 4. The generated tables are cached at `~/.nxwlansim/phy_tables/` — subsequent runs are fast.
 
-## Phase 3: Flask Web Dashboard (design approved — implementation next)
+## Phase 3: Flask Web Dashboard (complete)
 
 ### What it adds
 Real-time browser dashboard: live monitoring + interactive mid-run control + post-run replay.
@@ -170,7 +172,7 @@ nxwlansim dashboard --config configs/examples/npca_basic.yaml --port 5050
 
 ### Architecture
 - **SimBridge** (`dashboard/bridge.py`) hooks into engine's `on_tx / on_state / on_metrics / on_log` slots
-- **Flask + Flask-SocketIO** (`dashboard/server.py`) — eventlet async, WebSocket for live events
+- **Flask + Flask-SocketIO** (`dashboard/server.py`) — threading async_mode, WebSocket for live events
 - **REST API** (`dashboard/api.py`) — control commands (pause/resume/stop, add/remove/move nodes, inject traffic)
 - **SessionStore** (`observe/session_store.py`) — auto-saves every run to `results/sessions/<timestamp>/`
 - **dashboard.html + dashboard.js** — 4-panel grid (Topology, Throughput, Node Detail, Log Stream)
