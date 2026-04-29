@@ -1,0 +1,11 @@
+"""SocketIO event name constants."""
+
+EVT_TX            = "tx:event"
+EVT_LINK_STATE    = "link:state"
+EVT_METRICS       = "metrics:sample"
+EVT_LOG           = "log:line"
+EVT_SIM_TICK      = "sim:tick"
+EVT_SIM_STATUS    = "sim:status"
+EVT_NODE_ADDED    = "node:added"
+EVT_NODE_REMOVED  = "node:removed"
+EVT_SESSION_SAVED = "session:saved"
