@@ -30,3 +30,5 @@ configs/matlab_tables/
 htmlcov/
 # mypy
 .mypy_cache/
+# git worktrees
+.worktrees/

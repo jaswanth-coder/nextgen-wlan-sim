@@ -135,6 +135,17 @@ class MetricsCollector:
                     link_id=",".join(node.links),
                 )
 
+            if engine.on_metrics is not None:
+                engine.on_metrics(
+                    node_id=nid,
+                    time_us=now_us,
+                    throughput_mbps=tput_mbps,
+                    frames=f,
+                    bytes_tx=b,
+                    mcs=mcs,
+                    snr_db=snr,
+                )
+
             # Reset counters
             self._bytes_in_interval[nid] = 0
             self._frames_in_interval[nid] = 0

@@ -39,6 +39,8 @@ class ObsConfig:
     pcap: bool = False
     viz: bool = False
     gym: bool = False
+    dashboard: bool = False
+    dashboard_port: int = 5050
     output_dir: str = "results"
 
 

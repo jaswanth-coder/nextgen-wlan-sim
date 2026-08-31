@@ -10,6 +10,7 @@ from __future__ import annotations
 import heapq
 import itertools
 import logging
+import threading
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -54,6 +55,18 @@ class SimulationEngine:
         self._observers: list[Callable] = []
         self._running = False
 
+        # Dashboard hook slots — set by SimBridge; None = no-op
+        self.on_tx: "Callable | None" = None
+        self.on_state: "Callable | None" = None
+        self.on_metrics: "Callable | None" = None
+        self.on_log: "Callable | None" = None
+
+        # Pause / speed control
+        self._paused = False
+        self._speed_multiplier: float = 0.0  # 0.0 = max speed (no throttle)
+        self._pause_event = threading.Event()
+        self._pause_event.set()  # set = running (clear = paused)
+
     # ------------------------------------------------------------------
     # Scheduling
     # ------------------------------------------------------------------
@@ -80,6 +93,14 @@ class SimulationEngine:
         )
         heapq.heappush(self._queue, ev)
 
+    def pause(self) -> None:
+        self._paused = True
+        self._pause_event.clear()
+
+    def resume(self) -> None:
+        self._paused = False
+        self._pause_event.set()
+
     def schedule_after(
         self,
         delay_ns: int,
@@ -105,7 +126,7 @@ class SimulationEngine:
 
         duration_ns = self.config.simulation.duration_us * 1_000
         self._registry = build_simulation(self)
-        sim_logger = SimLogger(self.config)
+        sim_logger = SimLogger(self.config, engine=self)
         self._observers.append(sim_logger.on_event)
 
         from nxwlansim.core.results import SimResults
@@ -133,11 +154,22 @@ class SimulationEngine:
         )
         self._running = True
         event_count = 0
+        _prev_ns: int = 0
 
         while self._queue:
+            self._pause_event.wait()  # blocks while paused
+            if not self._running:
+                break
             ev = heapq.heappop(self._queue)
             if ev.time_ns > duration_ns:
                 break
+            # Wall-clock throttle: sleep proportional to sim-time delta
+            if self._speed_multiplier > 0:
+                import time as _time
+                delta_s = (ev.time_ns - _prev_ns) / 1e9 / self._speed_multiplier
+                if delta_s > 0:
+                    _time.sleep(min(delta_s, 0.1))  # cap at 100ms per event
+            _prev_ns = ev.time_ns
             self.clock_ns = ev.time_ns
             ev.callback(engine=self, **ev.kwargs)
             for obs in self._observers:

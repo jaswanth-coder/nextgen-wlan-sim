@@ -35,6 +35,13 @@ def main():
     # --- info ---
     info_p = sub.add_parser("info", help="Print simulator version and dependency status")
 
+    # --- dashboard ---
+    dash_p = sub.add_parser("dashboard", help="Launch interactive web dashboard")
+    dash_p.add_argument("--config", help="Path to YAML config file (omit for replay-only)")
+    dash_p.add_argument("--replay", help="Path to a session directory for replay-only mode")
+    dash_p.add_argument("--port", type=int, default=5050, help="HTTP port (default: 5050)")
+    dash_p.add_argument("-v", "--verbose", action="store_true", help="Verbose logging")
+
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -46,6 +53,8 @@ def main():
         _run(args)
     elif args.command == "info":
         _info()
+    elif args.command == "dashboard":
+        _dashboard(args)
 
 
 def _run(args) -> None:
@@ -80,6 +89,29 @@ def _info() -> None:
         except ImportError:
             status = "NOT installed"
         print(f"  {pkg:<20} {status}")
+
+
+def _dashboard(args) -> None:
+    from nxwlansim.dashboard.server import run_dashboard, create_app
+
+    if args.replay:
+        app, socketio = create_app(engine=None, config=None)
+        print(f"[Dashboard] Replay mode — open http://localhost:{args.port}")
+        socketio.run(app, host="0.0.0.0", port=args.port)
+        return
+
+    if not args.config:
+        print("Error: --config or --replay required")
+        raise SystemExit(1)
+
+    from nxwlansim.core.config import SimConfig
+    from nxwlansim.core.engine import SimulationEngine
+    cfg = SimConfig.from_yaml(args.config)
+    cfg.obs.dashboard = True
+    cfg.obs.dashboard_port = args.port
+    engine = SimulationEngine(cfg)
+    print(f"[Dashboard] Starting sim + dashboard — open http://localhost:{args.port}")
+    run_dashboard(engine, cfg, port=args.port)
 
 
 if __name__ == "__main__":

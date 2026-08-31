@@ -211,3 +211,20 @@ def schedule_traffic_sources(
             continue
         gen.start(engine, registry)
         logger.debug("Traffic source scheduled: %s → %s (%s)", tc.src, tc.dst, tc.type)
+
+
+def _schedule_single_source(engine: "SimulationEngine", src_node, t_cfg: "TrafficConfig") -> None:
+    """Inject a new traffic source into a running simulation."""
+    tc = t_cfg
+    if tc.type == "udp_cbr":
+        gen = UDPCBRGenerator(tc.src, tc.dst, tc.rate_mbps, tc.ac)
+    elif tc.type == "poisson":
+        gen = PoissonGenerator(tc.src, tc.dst, tc.rate_mbps, tc.ac)
+    elif tc.type == "voip":
+        gen = VoIPGenerator(tc.src, tc.dst)
+    elif tc.type == "video":
+        gen = VideoGenerator(tc.src, tc.dst, tc.rate_mbps)
+    else:
+        logger.warning("Unknown traffic type for inject: %s", tc.type)
+        return
+    gen.start(engine, engine._registry)

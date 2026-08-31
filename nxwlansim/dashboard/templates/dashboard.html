@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nxwlansim Dashboard</title>
+  <link rel="stylesheet" href="/static/dashboard.css" />
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <!-- Top navbar -->
+  <nav class="navbar">
+    <span class="nav-brand">nxwlansim</span>
+    <div class="nav-file-menu">
+      <button id="btn-file-menu" class="nav-btn">File &#9662;</button>
+      <div id="file-dropdown" class="dropdown hidden">
+        <button id="btn-open-session">Open Session</button>
+        <button id="btn-open-file">Open File&hellip;</button>
+      </div>
+    </div>
+    <div class="nav-status">
+      <span id="sim-clock">0.000 ms</span>
+      <span id="sim-status-badge" class="badge badge-stopped">STOPPED</span>
+    </div>
+  </nav>
+
+  <!-- Main workspace -->
+  <div class="workspace">
+    <!-- 2x2 panel grid -->
+    <div class="panel-grid" id="panel-grid">
+      <div class="panel" id="panel-0" data-panel-type="topology">
+        <div class="panel-header">
+          <span class="panel-title">Topology</span>
+          <div class="panel-controls">
+            <button class="btn-swap" data-panel="0" title="Swap panel">&#8596;</button>
+            <button class="btn-expand" data-panel="0" title="Full screen">&#9974;</button>
+          </div>
+        </div>
+        <div class="panel-body" id="panel-body-0"></div>
+      </div>
+      <div class="panel" id="panel-1" data-panel-type="throughput">
+        <div class="panel-header">
+          <span class="panel-title">Throughput</span>
+          <div class="panel-controls">
+            <button class="btn-swap" data-panel="1" title="Swap panel">&#8596;</button>
+            <button class="btn-expand" data-panel="1" title="Full screen">&#9974;</button>
+          </div>
+        </div>
+        <div class="panel-body" id="panel-body-1"></div>
+      </div>
+      <div class="panel" id="panel-2" data-panel-type="nodedetail">
+        <div class="panel-header">
+          <span class="panel-title">Node Detail</span>
+          <div class="panel-controls">
+            <button class="btn-swap" data-panel="2" title="Swap panel">&#8596;</button>
+            <button class="btn-expand" data-panel="2" title="Full screen">&#9974;</button>
+          </div>
+        </div>
+        <div class="panel-body" id="panel-body-2"></div>
+      </div>
+      <div class="panel" id="panel-3" data-panel-type="log">
+        <div class="panel-header">
+          <span class="panel-title">Log Stream</span>
+          <div class="panel-controls">
+            <button class="btn-swap" data-panel="3" title="Swap panel">&#8596;</button>
+            <button class="btn-expand" data-panel="3" title="Full screen">&#9974;</button>
+          </div>
+        </div>
+        <div class="panel-body" id="panel-body-3"></div>
+      </div>
+    </div>
+
+    <!-- Control sidebar -->
+    <div class="sidebar" id="sidebar">
+      <button id="sidebar-toggle" title="Toggle sidebar">&#9664;</button>
+      <div class="sidebar-content">
+
+        <section class="sidebar-section">
+          <h3>Sim Controls</h3>
+          <div class="sim-btn-row">
+            <button id="btn-pause" class="sim-btn">Pause</button>
+            <button id="btn-resume" class="sim-btn">Resume</button>
+            <button id="btn-stop" class="sim-btn btn-danger">Stop</button>
+          </div>
+          <div class="speed-row">
+            <label>Speed:</label>
+            <select id="speed-select">
+              <option value="0">Max</option>
+              <option value="1" selected>1&times;</option>
+              <option value="2">2&times;</option>
+              <option value="5">5&times;</option>
+              <option value="10">10&times;</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="sidebar-section" id="node-editor-section">
+          <h3>Node Editor</h3>
+          <div id="no-selection-msg" class="muted">Select a node on the topology</div>
+          <div id="node-editor" class="hidden">
+            <div class="field-row">
+              <label>Node:</label>
+              <strong id="editor-node-id">&mdash;</strong>
+            </div>
+            <div class="field-row">
+              <label>MCS:</label>
+              <select id="editor-mcs">
+                <option value="auto">Auto</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <label>NPCA:</label>
+              <input type="checkbox" id="editor-npca" checked />
+            </div>
+            <div class="field-row">
+              <label>Pos X:</label>
+              <input type="number" id="editor-pos-x" step="0.5" style="width:70px"/>
+              <label>Y:</label>
+              <input type="number" id="editor-pos-y" step="0.5" style="width:70px"/>
+              <button id="btn-move-node" class="sim-btn">Move</button>
+            </div>
+            <button id="btn-remove-node" class="sim-btn btn-danger">Remove Node</button>
+          </div>
+          <div class="divider"></div>
+          <h4>Add Node</h4>
+          <div class="field-row">
+            <label>ID:</label><input id="new-node-id" type="text" placeholder="sta99" style="width:80px"/>
+          </div>
+          <div class="field-row">
+            <label>Type:</label>
+            <select id="new-node-type">
+              <option value="sta">STA</option>
+              <option value="ap">AP</option>
+            </select>
+          </div>
+          <div class="field-row">
+            <label>Links:</label>
+            <input id="new-node-links" type="text" value="6g" style="width:80px" placeholder="5g,6g"/>
+          </div>
+          <button id="btn-add-node" class="sim-btn">Add Node</button>
+        </section>
+
+        <section class="sidebar-section">
+          <h3>Traffic Injector</h3>
+          <div class="field-row">
+            <label>Src:</label>
+            <select id="traffic-src" style="width:90px"></select>
+          </div>
+          <div class="field-row">
+            <label>Dst:</label>
+            <select id="traffic-dst" style="width:90px"></select>
+          </div>
+          <div class="field-row">
+            <label>Type:</label>
+            <select id="traffic-type">
+              <option value="udp_cbr">UDP CBR</option>
+              <option value="voip">VoIP</option>
+              <option value="video">Video</option>
+            </select>
+          </div>
+          <div class="field-row">
+            <label>Rate Mbps:</label>
+            <input type="number" id="traffic-rate" value="10" min="0.001" style="width:70px"/>
+          </div>
+          <div class="field-row">
+            <label>AC:</label>
+            <select id="traffic-ac">
+              <option>BE</option><option>BK</option>
+              <option>VI</option><option>VO</option>
+            </select>
+          </div>
+          <button id="btn-inject-traffic" class="sim-btn">Inject</button>
+        </section>
+
+      </div><!-- sidebar-content -->
+    </div><!-- sidebar -->
+  </div><!-- workspace -->
+
+  <!-- Replay bar (hidden in live mode) -->
+  <div class="replay-bar hidden" id="replay-bar">
+    <button id="replay-play-pause" class="sim-btn">&#9654;</button>
+    <input type="range" id="replay-scrubber" min="0" max="1000" value="0" style="flex:1"/>
+    <span id="replay-ts">0 ms</span>
+    <select id="replay-speed">
+      <option value="0.5">0.5&times;</option>
+      <option value="1" selected>1&times;</option>
+      <option value="2">2&times;</option>
+      <option value="5">5&times;</option>
+    </select>
+    <button id="replay-close" class="sim-btn">&#10005; Exit Replay</button>
+  </div>
+
+  <!-- Panel swap dropdown (shared, positioned absolutely) -->
+  <div id="swap-dropdown" class="dropdown hidden">
+    <button data-type="topology">Topology</button>
+    <button data-type="throughput">Throughput</button>
+    <button data-type="nodedetail">Node Detail</button>
+    <button data-type="log">Log Stream</button>
+  </div>
+
+  <!-- Session picker modal -->
+  <div id="session-modal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Sessions</h3>
+        <button id="session-modal-close">&#10005;</button>
+      </div>
+      <div id="session-list" class="session-list"></div>
+    </div>
+  </div>
+
+  <script src="/static/dashboard.js"></script>
+</body>
+</html>

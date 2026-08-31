@@ -15,8 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 class SimLogger:
-    def __init__(self, config: "SimConfig"):
+    def __init__(self, config: "SimConfig", engine=None):
         self._config = config
+        self._engine = engine
         self._csv_path = os.path.join(config.obs.output_dir, "metrics.csv")
         self._csv_file = None
         self._csv_writer = None
@@ -41,6 +42,13 @@ class SimLogger:
                 kw.get("snr_db", ""),
             ]
             self._csv_writer.writerow(row)
+
+        if self._engine is not None and self._engine.on_log is not None:
+            self._engine.on_log(
+                time_ns=event.time_ns,
+                callback=getattr(event.callback, "__name__", ""),
+                kwargs=event.kwargs,
+            )
 
     def close(self) -> None:
         if self._csv_file:
